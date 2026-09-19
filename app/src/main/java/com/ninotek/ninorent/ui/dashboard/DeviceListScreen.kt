@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ninotek.ninorent.model.Customer
 import com.ninotek.ninorent.model.Equipment
+import com.ninotek.ninorent.utils.reconcileEquipmentStatus
 import com.ninotek.ninorent.model.RentalOrder
 import com.ninotek.ninorent.model.defaultDevicesList
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -152,6 +153,32 @@ fun DeviceListScreen(
                             tint = PrimaryOrange
                         )
                     }
+                }
+                IconButton(
+                    onClick = {
+                        val reconciled = reconcileEquipmentStatus(devicesList, ordersList)
+                        val changedCount = reconciled.count { eq ->
+                            val old = devicesList.find { it.id == eq.id }
+                            old != null && old.status != eq.status
+                        }
+                        reconciled.forEach { eq ->
+                            val old = devicesList.find { it.id == eq.id }
+                            if (old != null && old.status != eq.status) {
+                                onEditEquipment(eq)
+                            }
+                        }
+                        if (changedCount > 0) {
+                            Toast.makeText(context, "Đã chuẩn hóa thành công $changedCount thiết bị dính trạng thái!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Trạng thái các thiết bị đã khớp hoàn toàn với đơn thuê!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Build,
+                        contentDescription = "Chuẩn hóa trạng thái thiết bị",
+                        tint = PrimaryOrange
+                    )
                 }
                 IconButton(onClick = { showAddDialog = true }) {
                     Icon(imageVector = Icons.Rounded.Add, contentDescription = "Thêm thiết bị", tint = PrimaryOrange)

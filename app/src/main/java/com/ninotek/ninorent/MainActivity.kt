@@ -47,6 +47,7 @@ import com.ninotek.ninorent.ui.theme.NinoRentTheme
 import com.ninotek.ninorent.ui.theme.PrimaryOrange
 import com.ninotek.ninorent.utils.NotificationHelper
 import com.ninotek.ninorent.utils.SupabaseManager
+import com.ninotek.ninorent.utils.reconcileEquipmentStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -236,6 +237,24 @@ fun NinoRentApp() {
                 }
             } catch (_: Exception) {
                 // Offline status or network error fallback: keep local/demo state intact
+            }
+        }
+    }
+
+    // Automatically reconcile equipment status with active rental orders
+    LaunchedEffect(devicesList, ordersList) {
+        if (devicesList.isNotEmpty()) {
+            val reconciled = reconcileEquipmentStatus(devicesList, ordersList)
+            if (reconciled != devicesList) {
+                val changedDevices = reconciled.filterIndexed { index, eq ->
+                    index >= devicesList.size || eq.status != devicesList[index].status
+                }
+                devicesList = reconciled
+                withContext(Dispatchers.IO) {
+                    changedDevices.forEach { eq ->
+                        SupabaseManager.updateEquipment(eq)
+                    }
+                }
             }
         }
     }

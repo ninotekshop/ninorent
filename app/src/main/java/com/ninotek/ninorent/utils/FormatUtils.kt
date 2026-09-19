@@ -1,5 +1,7 @@
 package com.ninotek.ninorent.utils
 
+import com.ninotek.ninorent.model.Equipment
+import com.ninotek.ninorent.model.RentalOrder
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
@@ -53,4 +55,39 @@ fun formatCurrencyInput(input: String): String {
     if (digitsOnly.isEmpty()) return ""
     val longVal = digitsOnly.toLongOrNull() ?: return input
     return formatCurrencyAmount(longVal)
+}
+
+fun reconcileEquipmentStatus(
+    devices: List<Equipment>,
+    orders: List<RentalOrder>
+): List<Equipment> {
+    val activeOrders = orders.filter { it.status == "Đang thuê" || it.status == "Quá hạn" }
+    val rentedIdentifiers = mutableSetOf<String>()
+
+    activeOrders.forEach { order ->
+        val itemsList = getOrderEquipmentItems(order)
+        itemsList.forEach { item ->
+            val name = item.equipmentName.trim().lowercase()
+            if (name.isNotBlank()) rentedIdentifiers.add(name)
+        }
+        val mainName = order.equipmentName.substringBefore("+").trim().lowercase()
+        if (mainName.isNotBlank()) {
+            rentedIdentifiers.add(mainName)
+        }
+    }
+
+    return devices.map { device ->
+        val deviceNameClean = device.name.trim().lowercase()
+        val isDeviceRented = rentedIdentifiers.any { id ->
+            deviceNameClean.contains(id) || id.contains(deviceNameClean)
+        }
+
+        if (!isDeviceRented && (device.status == "Đang thuê" || device.status == "Quá hạn")) {
+            device.copy(status = "Sẵn sàng")
+        } else if (isDeviceRented && device.status == "Sẵn sàng") {
+            device.copy(status = "Đang thuê")
+        } else {
+            device
+        }
+    }
 }
