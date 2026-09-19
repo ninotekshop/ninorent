@@ -2,6 +2,7 @@ package com.ninotek.ninorent.ui.dashboard
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,6 +29,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.ninotek.ninorent.model.BankAccountInfo
 import com.ninotek.ninorent.model.Customer
 import com.ninotek.ninorent.model.Equipment
@@ -332,21 +337,7 @@ fun MoreScreen(
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = PrimaryOrange.copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = "Multi-Tenant",
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = PrimaryOrange,
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                }
+
                             }
 
                             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
@@ -777,12 +768,71 @@ fun MoreScreen(
         var representative by remember { mutableStateOf(lessorInfo.representative) }
         var address by remember { mutableStateOf(lessorInfo.address) }
         var phone by remember { mutableStateOf(lessorInfo.phone) }
+        var logoUri by remember { mutableStateOf(lessorInfo.logoUri) }
+
+        val logoPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri ->
+            if (uri != null) {
+                logoUri = uri.toString()
+            }
+        }
 
         AlertDialog(
             onDismissRequest = { showEditLessorDialog = false },
             title = { Text("Chỉnh sửa thông tin Bên A", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Text("Logo cửa hàng (Hiển thị trên hợp đồng)", fontWeight = FontWeight.Medium, fontSize = 13.sp, color = PrimaryOrange)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.LightGray.copy(alpha = 0.3f))
+                                .clickable { logoPickerLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (!logoUri.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = logoUri,
+                                    contentDescription = "Logo",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = null, tint = Color.Gray)
+                            }
+                        }
+                        Column {
+                            OutlinedButton(
+                                onClick = { logoPickerLauncher.launch("image/*") },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(36.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Text("Chọn Logo", fontSize = 12.sp)
+                            }
+                            if (!logoUri.isNullOrBlank()) {
+                                TextButton(
+                                    onClick = { logoUri = null },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                ) {
+                                    Text("Xóa Logo", fontSize = 12.sp, color = Color.Red)
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
@@ -819,7 +869,8 @@ fun MoreScreen(
                             name = name,
                             representative = representative,
                             address = address,
-                            phone = phone
+                            phone = phone,
+                            logoUri = logoUri
                         )
                         onUpdateLessorInfo(newLessorInfo)
                         saveLessorInfoToPrefs(context, newLessorInfo)

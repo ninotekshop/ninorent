@@ -177,7 +177,8 @@ data class LessorInfo(
     val name: String = "",
     val representative: String = "",
     val address: String = "",
-    val phone: String = ""
+    val phone: String = "",
+    val logoUri: String? = null
 )
 
 val defaultLessorInfo = LessorInfo()
@@ -189,6 +190,7 @@ fun saveLessorInfoToPrefs(context: Context, info: LessorInfo) {
         .putString("lessor_address", info.address)
         .putString("lessor_representative", info.representative)
         .putString("lessor_phone", info.phone)
+        .putString("lessor_logo_uri", info.logoUri)
         .apply()
 }
 
@@ -198,7 +200,8 @@ fun loadLessorInfoFromPrefs(context: Context): LessorInfo {
         name = prefs.getString("lessor_name", null) ?: defaultLessorInfo.name,
         address = prefs.getString("lessor_address", null) ?: defaultLessorInfo.address,
         representative = prefs.getString("lessor_representative", null) ?: defaultLessorInfo.representative,
-        phone = prefs.getString("lessor_phone", null) ?: defaultLessorInfo.phone
+        phone = prefs.getString("lessor_phone", null) ?: defaultLessorInfo.phone,
+        logoUri = prefs.getString("lessor_logo_uri", null)
     )
 }
 

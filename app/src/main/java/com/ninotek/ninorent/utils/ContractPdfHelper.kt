@@ -2,8 +2,11 @@ package com.ninotek.ninorent.utils
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.net.Uri
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
@@ -236,50 +239,73 @@ fun generateContractPdf(order: RentalOrder, paperSize: PaperSize, context: Conte
 
     var y = margin.toFloat() + 8f * scale
 
-    // 1. Header: Logo NINOTEK & Motto
-    val lessorName = if (order.lessorName.isNotBlank()) order.lessorName else (savedLessor?.name ?: "CÔNG TY TNHH NINOTEK")
-    val lessorPhone = if (order.lessorPhone.isNotBlank()) order.lessorPhone else (savedLessor?.phone ?: "0901234567")
-    val lessorAddr = if (order.lessorAddress.isNotBlank()) order.lessorAddress else (savedLessor?.address ?: "Số 123 Nguyễn Huệ, TP. Quy Nhơn, Tỉnh Bình Định")
-    val lessorRep = if (order.lessorRepresentative.isNotBlank()) order.lessorRepresentative else (savedLessor?.representative ?: "Ông Nguyễn Văn A - Giám Đốc")
-
-    // Left Header
-    paintBold.textSize = 12f * scale
-    paintBold.color = Color.rgb(255, 102, 0) // Primary Orange
-    canvas.drawText("NINOTEK", margin.toFloat(), y, paintBold)
-    paintBold.color = Color.BLACK
-
-    // Right Header: Motto (Quốc hiệu & Tiêu ngữ)
+    // 1. Header: Logo (Left) & Motto (Right)
     val rightHeaderWidth = 230f * scale
     val mottoCenterX = pageWidth - margin - (rightHeaderWidth / 2f)
 
+    // Draw Motto (Right Side)
     paintBold.textSize = 9.5f * scale
     paintBold.textAlign = Paint.Align.CENTER
     canvas.drawText("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", mottoCenterX, y, paintBold)
 
-    y += 13f * scale
-    paintText.textSize = 8.5f * scale
-    paintText.textAlign = Paint.Align.LEFT
-    canvas.drawText(lessorName, margin.toFloat(), y, paintText)
-
+    val yMottoLine2 = y + 13f * scale
     paintBold.textSize = 9.5f * scale
     paintBold.isUnderlineText = true
-    canvas.drawText("Độc lập – Tự do – Hạnh phúc", mottoCenterX, y, paintBold)
+    canvas.drawText("Độc lập – Tự do – Hạnh phúc", mottoCenterX, yMottoLine2, paintBold)
     paintBold.isUnderlineText = false
     paintBold.textAlign = Paint.Align.LEFT
 
-    y += 12f * scale
-    canvas.drawText("SĐT: $lessorPhone", margin.toFloat(), y, paintText)
+    val yDateLine = yMottoLine2 + 22f * scale
 
-    y += 18f * scale
-
-    // Contract Date Line
+    // Draw Date Line (Right Side)
     val dateLine = formatVietnameseContractDate(order.contractLocation, order.contractDate)
     paintText.textSize = 9.5f * scale
     paintText.textAlign = Paint.Align.RIGHT
-    canvas.drawText(dateLine, (pageWidth - margin).toFloat(), y, paintText)
+    canvas.drawText(dateLine, (pageWidth - margin).toFloat(), yDateLine, paintText)
     paintText.textAlign = Paint.Align.LEFT
 
-    y += 22f * scale
+    // Draw Logo (Left Side) replacing the old text
+    val logoUriString = savedLessor?.logoUri
+    if (!logoUriString.isNullOrBlank() && context != null) {
+        try {
+            val uri = Uri.parse(logoUriString)
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val originalBitmap = BitmapFactory.decodeStream(inputStream)
+            inputStream?.close()
+
+            if (originalBitmap != null) {
+                val availableHeight = yDateLine - (margin.toFloat() + 8f * scale)
+                val maxLogoHeight = availableHeight + 10f * scale // slight allowance
+
+                val ratio = originalBitmap.width.toFloat() / originalBitmap.height.toFloat()
+                val targetHeight = maxLogoHeight
+                val targetWidth = targetHeight * ratio
+
+                val scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, targetWidth.toInt(), targetHeight.toInt(), true)
+
+                // Align left
+                val logoX = margin.toFloat()
+                val logoY = margin.toFloat() + 4f * scale
+
+                canvas.drawBitmap(scaledBitmap, logoX, logoY, null)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Fallback text if logo fails to load
+            paintBold.textSize = 12f * scale
+            paintBold.color = Color.rgb(255, 102, 0)
+            canvas.drawText("NINOTEK", margin.toFloat(), y, paintBold)
+            paintBold.color = Color.BLACK
+        }
+    } else {
+        // Fallback text if no logo configured
+        paintBold.textSize = 12f * scale
+        paintBold.color = Color.rgb(255, 102, 0)
+        canvas.drawText("NINOTEK", margin.toFloat(), y, paintBold)
+        paintBold.color = Color.BLACK
+    }
+
+    y = yDateLine + 22f * scale
 
     // Title
     paintTitle.textAlign = Paint.Align.CENTER
@@ -293,18 +319,23 @@ fun generateContractPdf(order: RentalOrder, paperSize: PaperSize, context: Conte
 
     y += 20f * scale
 
+    val lName = if (order.lessorName.isNotBlank()) order.lessorName else (savedLessor?.name ?: "CÔNG TY TNHH NINOTEK")
+    val lPhone = if (order.lessorPhone.isNotBlank()) order.lessorPhone else (savedLessor?.phone ?: "0901234567")
+    val lAddr = if (order.lessorAddress.isNotBlank()) order.lessorAddress else (savedLessor?.address ?: "Số 123 Nguyễn Huệ, TP. Quy Nhơn, Tỉnh Bình Định")
+    val lRep = if (order.lessorRepresentative.isNotBlank()) order.lessorRepresentative else (savedLessor?.representative ?: "Ông Nguyễn Văn A - Giám Đốc")
+
     // I. BÊN A
     paintBold.textSize = 10.5f * scale
     canvas.drawText("I. BÊN A (BÊN CHO THUÊ):", margin.toFloat(), y, paintBold)
     y += 13f * scale
     paintText.textSize = 9.5f * scale
-    canvas.drawText("• Đơn vị: $lessorName", (margin + 10 * scale).toFloat(), y, paintText)
+    canvas.drawText("• Đơn vị: $lName", (margin + 10 * scale).toFloat(), y, paintText)
     y += 12f * scale
-    canvas.drawText("• Địa chỉ: $lessorAddr", (margin + 10 * scale).toFloat(), y, paintText)
+    canvas.drawText("• Địa chỉ: $lAddr", (margin + 10 * scale).toFloat(), y, paintText)
     y += 12f * scale
-    canvas.drawText("• Đại diện: $lessorRep", (margin + 10 * scale).toFloat(), y, paintText)
+    canvas.drawText("• Đại diện: $lRep", (margin + 10 * scale).toFloat(), y, paintText)
     y += 12f * scale
-    canvas.drawText("• Điện thoại: $lessorPhone", (margin + 10 * scale).toFloat(), y, paintText)
+    canvas.drawText("• Điện thoại: $lPhone", (margin + 10 * scale).toFloat(), y, paintText)
 
     y += 16f * scale
 
@@ -476,7 +507,7 @@ fun generateContractPdf(order: RentalOrder, paperSize: PaperSize, context: Conte
 
     y += 38f * scale
     paintBold.textSize = 9.5f * scale
-    canvas.drawText(lessorRep.substringBefore("-").trim(), colA, y, paintBold)
+    canvas.drawText(lRep.substringBefore("-").trim(), colA, y, paintBold)
     canvas.drawText(lesseeName, colB, y, paintBold)
 
     paintBold.textAlign = Paint.Align.LEFT
