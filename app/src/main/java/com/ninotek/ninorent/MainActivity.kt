@@ -299,11 +299,6 @@ fun NinoRentApp() {
                 BackHandler(enabled = currentTab != DashboardTab.Home) {
                     currentTab = DashboardTab.Home
                 }
-                LaunchedEffect(currentTab) {
-                    if (currentTab == DashboardTab.Devices) {
-                        refreshEquipmentFromSupabase(false)
-                    }
-                }
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
