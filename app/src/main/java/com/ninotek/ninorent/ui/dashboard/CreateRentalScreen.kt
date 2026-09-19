@@ -46,9 +46,16 @@ import com.ninotek.ninorent.model.Equipment
 import com.ninotek.ninorent.model.LessorInfo
 import com.ninotek.ninorent.model.PaperSize
 import com.ninotek.ninorent.model.RentalOrder
+import com.ninotek.ninorent.model.UserAccountStore
+import com.ninotek.ninorent.model.UserRole
 import com.ninotek.ninorent.model.defaultDevicesList
 import com.ninotek.ninorent.model.defaultLessorInfo
+import com.ninotek.ninorent.model.isStoreConfigured
 import com.ninotek.ninorent.model.loadBankAccountInfoFromPrefs
+import com.ninotek.ninorent.model.saveBankAccountInfoToPrefs
+import com.ninotek.ninorent.model.saveLessorInfoToPrefs
+import com.ninotek.ninorent.utils.SupabaseManager
+import kotlinx.coroutines.launch
 import com.ninotek.ninorent.ui.theme.NinoRentTheme
 import com.ninotek.ninorent.ui.theme.PrimaryOrange
 import com.ninotek.ninorent.utils.formatCurrencyAmount
@@ -75,6 +82,164 @@ fun CreateRentalScreen(
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+
+    val activeUser = remember { UserAccountStore.getCurrentSession(context) }
+    val isOwner = activeUser == null || activeUser.role == UserRole.OWNER
+
+    var isConfigured by remember { mutableStateOf(isStoreConfigured(context)) }
+    var showSetupDialog by remember { mutableStateOf(!isConfigured) }
+
+    if (!isConfigured && showSetupDialog) {
+        if (isOwner) {
+            var setupLessorName by remember { mutableStateOf(lessorInfo.name) }
+            var setupLessorRep by remember { mutableStateOf(lessorInfo.representative) }
+            var setupLessorAddr by remember { mutableStateOf(lessorInfo.address) }
+            var setupLessorPhone by remember { mutableStateOf(lessorInfo.phone) }
+
+            var setupBankName by remember { mutableStateOf(bankAccountInfo.bankName.ifBlank { "MB Bank" }) }
+            var setupAccNum by remember { mutableStateOf(bankAccountInfo.accountNumber) }
+            var setupAccHolder by remember { mutableStateOf(bankAccountInfo.accountHolderName) }
+
+            AlertDialog(
+                onDismissRequest = { onBack() },
+                icon = { Icon(Icons.Rounded.Settings, contentDescription = null, tint = PrimaryOrange, modifier = Modifier.size(36.dp)) },
+                title = { Text("Cấu hình Cửa hàng (Bắt buộc)", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "Đây là lần đầu tạo đơn. Vui lòng cấu hình Thông tin Bên A (Đơn vị cho thuê) và Tài khoản nhận tiền VietQR trước khi tiếp tục.",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+
+                        Text("1. Thông tin Bên A (Đơn vị cho thuê)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = PrimaryOrange)
+
+                        OutlinedTextField(
+                            value = setupLessorName,
+                            onValueChange = { setupLessorName = it },
+                            label = { Text("Tên cửa hàng / Công ty cho thuê *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = setupLessorRep,
+                            onValueChange = { setupLessorRep = it },
+                            label = { Text("Người đại diện (Ông/Bà) *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = setupLessorAddr,
+                            onValueChange = { setupLessorAddr = it },
+                            label = { Text("Địa chỉ cửa hàng *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = setupLessorPhone,
+                            onValueChange = { setupLessorPhone = it },
+                            label = { Text("Số điện thoại hotline Bên A *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        Text("2. Tài khoản Ngân hàng (VietQR)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = PrimaryOrange)
+
+                        OutlinedTextField(
+                            value = setupBankName,
+                            onValueChange = { setupBankName = it },
+                            label = { Text("Tên Ngân hàng (vd: MB Bank, Vietcombank) *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = setupAccNum,
+                            onValueChange = { setupAccNum = it },
+                            label = { Text("Số tài khoản *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        OutlinedTextField(
+                            value = setupAccHolder,
+                            onValueChange = { setupAccHolder = it },
+                            label = { Text("Tên chủ tài khoản (Viết hoa không dấu) *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (setupLessorName.isNotBlank() && setupLessorPhone.isNotBlank() && setupBankName.isNotBlank() && setupAccNum.isNotBlank()) {
+                                val newLessor = LessorInfo(
+                                    name = setupLessorName.trim(),
+                                    representative = setupLessorRep.trim(),
+                                    address = setupLessorAddr.trim(),
+                                    phone = setupLessorPhone.trim()
+                                )
+                                val newBank = BankAccountInfo(
+                                    bankName = setupBankName.trim(),
+                                    accountNumber = setupAccNum.trim(),
+                                    accountHolderName = setupAccHolder.trim()
+                                )
+
+                                saveLessorInfoToPrefs(context, newLessor)
+                                saveBankAccountInfoToPrefs(context, newBank)
+
+                                scope.launch {
+                                    SupabaseManager.upsertStoreSettings(newLessor, newBank)
+                                }
+
+                                isConfigured = true
+                                showSetupDialog = false
+                                Toast.makeText(context, "Đã lưu cấu hình cửa hàng thành công!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Vui lòng điền đầy đủ các thông tin bắt buộc (*)", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
+                    ) {
+                        Text("Lưu & Tiếp tục Tạo đơn", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { onBack() }) {
+                        Text("Hủy (Quay lại)")
+                    }
+                }
+            )
+        } else {
+            // Staff Warning Dialog
+            AlertDialog(
+                onDismissRequest = { onBack() },
+                icon = { Icon(Icons.Rounded.Warning, contentDescription = null, tint = Color.Red, modifier = Modifier.size(36.dp)) },
+                title = { Text("Cửa hàng chưa được cấu hình", fontWeight = FontWeight.Bold) },
+                text = {
+                    Text(
+                        "Cửa hàng chưa được cấu hình Thông tin Bên A (Đơn vị cho thuê) và Tài khoản ngân hàng VietQR.\n\nVui lòng báo với Chủ shop (Admin) thực hiện cấu hình trước khi tạo đơn.",
+                        fontSize = 13.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { onBack() },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
+                    ) {
+                        Text("Đóng / Quay lại")
+                    }
+                }
+            )
+        }
+    }
 
     BackHandler {
         when {

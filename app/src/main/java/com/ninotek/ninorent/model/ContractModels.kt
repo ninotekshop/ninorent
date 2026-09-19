@@ -228,6 +228,20 @@ fun loadBankAccountInfoFromPrefs(context: Context): BankAccountInfo {
     )
 }
 
+fun isLessorInfoConfigured(context: Context): Boolean {
+    val prefs = context.getSharedPreferences("ninorent_prefs", Context.MODE_PRIVATE)
+    return prefs.contains("lessor_name") && prefs.contains("lessor_phone")
+}
+
+fun isBankAccountConfigured(context: Context): Boolean {
+    val prefs = context.getSharedPreferences("ninorent_prefs", Context.MODE_PRIVATE)
+    return prefs.contains("bank_name") && prefs.contains("bank_account_number")
+}
+
+fun isStoreConfigured(context: Context): Boolean {
+    return isLessorInfoConfigured(context) && isBankAccountConfigured(context)
+}
+
 data class ContractInfo(
     val lessorName: String = "",
     val lessorAddress: String = "",
