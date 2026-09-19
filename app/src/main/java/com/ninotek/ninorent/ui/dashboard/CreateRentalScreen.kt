@@ -416,6 +416,18 @@ fun CreateRentalScreen(
         )
     }
 
+    var isOrderSaved by remember(state.generatedOrderId) { mutableStateOf(false) }
+
+    val confirmPaymentAndSaveOrder = {
+        state.paymentConfirmed = true
+        if (!isOrderSaved) {
+            onCreateOrder(currentCreatedOrder)
+            isOrderSaved = true
+            Toast.makeText(context, "Đã xác nhận thanh toán & lưu đơn thuê vào CSDL!", Toast.LENGTH_SHORT).show()
+        }
+        state.currentStep = 4
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -1198,10 +1210,7 @@ fun CreateRentalScreen(
                                     )
 
                                     Button(
-                                        onClick = {
-                                            state.paymentConfirmed = true
-                                            state.currentStep = 4
-                                        },
+                                        onClick = { confirmPaymentAndSaveOrder() },
                                         modifier = Modifier.fillMaxWidth().height(46.dp),
                                         shape = RoundedCornerShape(10.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
@@ -1243,7 +1252,7 @@ fun CreateRentalScreen(
                                 Text("⇦ Quay lại", fontWeight = FontWeight.Bold)
                             }
                             Button(
-                                onClick = { state.currentStep = 4 },
+                                onClick = { confirmPaymentAndSaveOrder() },
                                 modifier = Modifier
                                     .weight(1.5f)
                                     .height(50.dp),
@@ -1426,7 +1435,10 @@ fun CreateRentalScreen(
 
                                 Button(
                                     onClick = {
-                                        onCreateOrder(currentCreatedOrder)
+                                        if (!isOrderSaved) {
+                                            onCreateOrder(currentCreatedOrder)
+                                            isOrderSaved = true
+                                        }
                                         state.reset(devicesList)
                                         onSuccess()
                                     },
