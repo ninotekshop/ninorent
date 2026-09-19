@@ -376,7 +376,7 @@ fun CreateRentalScreen(
     val serialNumberCombined = state.cartItems.joinToString(", ") { it.serialNumber }.ifEmpty { "SN-2026-NINO88" }
 
     val currentCreatedOrder = remember(
-        state.generatedOrderId, equipmentNameCombined, serialNumberCombined, state.startDate, state.endDate, state.durationDays,
+        state.generatedOrderId, equipmentNameCombined, serialNumberCombined, state.startDate, state.startTime, state.endDate, state.endTime, state.durationDays,
         netTotalFormatted, state.lesseeName, state.lesseePhone, state.lesseeAddress, state.lesseeIdNumber, state.lesseeIdIssueDate,
         state.advancePaymentAmount, state.collateralCccd, state.collateralGplx, state.hasCollateralAsset, state.collateralAssetDescription,
         state.hasCollateralCash, state.collateralCashAmount, state.contractLocation, state.contractDate, lessorInfo, bankAccountInfo, discountFormatted, grossTotalFormatted, state.cartItems.toList()
@@ -384,7 +384,7 @@ fun CreateRentalScreen(
         RentalOrder(
             id = state.generatedOrderId,
             equipmentName = equipmentNameCombined,
-            dateRange = "${state.startDate} - ${state.endDate} (${state.durationDays})",
+            dateRange = "${state.startTime} ${state.startDate} - ${state.endTime} ${state.endDate} (${state.durationDays})",
             price = grossTotalFormatted,
             status = "Đang thuê",
             customerName = state.lesseeName.ifBlank { "Khách Thuê" },
@@ -872,7 +872,27 @@ fun CreateRentalScreen(
                             }
                         }
 
-                        Text("3. Thời gian & Giảm giá", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("3. Thời gian & Giảm giá (Nguyên tắc 24h)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+                        Surface(
+                            color = PrimaryOrange.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(Icons.Rounded.Schedule, contentDescription = null, tint = PrimaryOrange, modifier = Modifier.size(18.dp))
+                                Text(
+                                    text = "Tính theo chu kỳ 24h: Giờ nhận máy trùng giờ trả máy sau N ngày (Ví dụ: ${state.startTime} ${state.startDate} ➔ ${state.endTime} ${state.endDate} là ${state.durationDays}).",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -888,10 +908,39 @@ fun CreateRentalScreen(
                                 singleLine = true
                             )
                             OutlinedTextField(
+                                value = state.startTime,
+                                onValueChange = {
+                                    state.startTime = it
+                                    state.endTime = it
+                                },
+                                label = { Text("Giờ nhận máy") },
+                                leadingIcon = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
+                                placeholder = { Text("vd: 19:00") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedTextField(
                                 value = state.endDate,
                                 onValueChange = { state.endDate = it },
                                 label = { Text("Ngày kết thúc") },
                                 leadingIcon = { Icon(Icons.Rounded.CalendarToday, contentDescription = null) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = state.endTime,
+                                onValueChange = { state.endTime = it },
+                                label = { Text("Giờ trả máy (24h)") },
+                                leadingIcon = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
+                                placeholder = { Text("vd: 19:00") },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
                                 singleLine = true
@@ -901,7 +950,7 @@ fun CreateRentalScreen(
                         OutlinedTextField(
                             value = state.durationDays,
                             onValueChange = { state.durationDays = it },
-                            label = { Text("Số ngày thuê") },
+                            label = { Text("Số ngày thuê (24h/ngày)") },
                             leadingIcon = { Icon(Icons.Rounded.Timelapse, contentDescription = null) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),

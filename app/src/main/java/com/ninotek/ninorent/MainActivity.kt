@@ -48,6 +48,7 @@ import com.ninotek.ninorent.ui.theme.PrimaryOrange
 import com.ninotek.ninorent.utils.NotificationHelper
 import com.ninotek.ninorent.utils.SupabaseManager
 import com.ninotek.ninorent.utils.reconcileEquipmentStatus
+import com.ninotek.ninorent.utils.updateOrdersOverdueStatus24h
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -254,6 +255,22 @@ fun NinoRentApp() {
                     changedDevices.forEach { eq ->
                         SupabaseManager.updateEquipment(eq)
                     }
+                }
+            }
+        }
+    }
+
+    // Automatically check 24h overdue status for active rental orders
+    LaunchedEffect(ordersList) {
+        val updatedOrders = updateOrdersOverdueStatus24h(ordersList)
+        if (updatedOrders != ordersList) {
+            val newlyOverdue = updatedOrders.filterIndexed { idx, ord ->
+                ord.status == "Quá hạn" && (idx >= ordersList.size || ordersList[idx].status != "Quá hạn")
+            }
+            ordersList = updatedOrders
+            withContext(Dispatchers.IO) {
+                newlyOverdue.forEach { ord ->
+                    SupabaseManager.updateRentalOrderStatus(ord.id, "Quá hạn")
                 }
             }
         }

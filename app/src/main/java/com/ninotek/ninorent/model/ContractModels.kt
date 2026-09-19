@@ -360,9 +360,11 @@ class CreateRentalOrderState(
 
     // Step 2: Shopping Cart & Equipment Selection
     val cartItems = mutableStateListOf<CartItem>()
-    var startDate by mutableStateOf("10/09/2026")
-    var endDate by mutableStateOf("11/09/2026")
-    var durationDays by mutableStateOf("1 ngày")
+    var startDate by mutableStateOf("20/09/2026")
+    var startTime by mutableStateOf("19:00")
+    var endDate by mutableStateOf("21/09/2026")
+    var endTime by mutableStateOf("19:00")
+    var durationDays by mutableStateOf("1 ngày (24h)")
 
     // Discount: VNĐ vs %
     var discountTypeIsPercent by mutableStateOf(false) // false = VNĐ, true = %
@@ -379,7 +381,7 @@ class CreateRentalOrderState(
     var hasCollateralCash by mutableStateOf(false)
     var collateralCashAmount by mutableStateOf("5.000.000")
     var contractLocation by mutableStateOf("TP. Quy Nhơn, Bình Định")
-    var contractDate by mutableStateOf("10/09/2026")
+    var contractDate by mutableStateOf("20/09/2026")
 
     // Step 4: Paper Size
     var selectedPaperSize by mutableStateOf(PaperSize.A4)
@@ -409,9 +411,11 @@ class CreateRentalOrderState(
 
         cartItems.clear()
 
-        startDate = "10/09/2026"
-        endDate = "11/09/2026"
-        durationDays = "1 ngày"
+        startDate = "20/09/2026"
+        startTime = "19:00"
+        endDate = "21/09/2026"
+        endTime = "19:00"
+        durationDays = "1 ngày (24h)"
         discountTypeIsPercent = false
         discountValueText = "0"
 

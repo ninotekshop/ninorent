@@ -4,6 +4,9 @@ import com.ninotek.ninorent.model.Equipment
 import com.ninotek.ninorent.model.RentalOrder
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 fun formatCurrencyAmount(amount: Long): String {
@@ -88,6 +91,60 @@ fun reconcileEquipmentStatus(
             device.copy(status = "Đang thuê")
         } else {
             device
+        }
+    }
+}
+
+fun parseEndDateTimeFromOrder(order: RentalOrder): Date? {
+    val range = order.dateRange
+    if (range.isBlank()) return null
+
+    val sdfFull = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
+    val sdfFullAlt = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    val sdfDateOnly = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
+    val parts = range.split("-").map { it.trim() }
+    val endPart = parts.getOrNull(1) ?: parts.getOrNull(0) ?: return null
+    val cleanEnd = endPart.substringBefore("(").trim()
+
+    try {
+        val date = sdfFull.parse(cleanEnd)
+        if (date != null) return date
+    } catch (_: Exception) {}
+
+    try {
+        val date = sdfFullAlt.parse(cleanEnd)
+        if (date != null) return date
+    } catch (_: Exception) {}
+
+    try {
+        val dateOnly = sdfDateOnly.parse(cleanEnd)
+        if (dateOnly != null) {
+            val cal = Calendar.getInstance()
+            cal.time = dateOnly
+            cal.set(Calendar.HOUR_OF_DAY, 23)
+            cal.set(Calendar.MINUTE, 59)
+            cal.set(Calendar.SECOND, 59)
+            return cal.time
+        }
+    } catch (_: Exception) {}
+
+    return null
+}
+
+fun isOrderOverdue24h(order: RentalOrder, now: Date = Date()): Boolean {
+    if (order.status != "Đang thuê") return false
+    val endDateTime = parseEndDateTimeFromOrder(order) ?: return false
+    return now.after(endDateTime)
+}
+
+fun updateOrdersOverdueStatus24h(orders: List<RentalOrder>): List<RentalOrder> {
+    val now = Date()
+    return orders.map { order ->
+        if (order.status == "Đang thuê" && isOrderOverdue24h(order, now)) {
+            order.copy(status = "Quá hạn")
+        } else {
+            order
         }
     }
 }
