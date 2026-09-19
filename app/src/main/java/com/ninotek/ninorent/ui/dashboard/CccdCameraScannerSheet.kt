@@ -133,8 +133,7 @@ fun CccdCameraScannerSheet(
                         modifier = Modifier.fillMaxSize()
                     )
                     ScannerOverlayUI(
-                        onDismiss = onDismiss,
-                        onCccdScanned = onCccdScanned
+                        onDismiss = onDismiss
                     )
                 } else {
                     CameraPermissionDeniedUI(
@@ -216,14 +215,8 @@ private fun CameraXViewfinder(
  */
 @Composable
 private fun ScannerOverlayUI(
-    onDismiss: () -> Unit,
-    onCccdScanned: (CccdData) -> Unit
+    onDismiss: () -> Unit
 ) {
-    val sampleQr1 = "052095001234|123456789|Nguyễn Văn Nam|15051995|Nam|123 Lê Lợi, TP. Quy Nhơn, Tỉnh Bình Định|15052021"
-    val sampleQr2 = "052200001234|987654321|Trần Thị Mai|20101998|Nữ|456 Trần Hưng Đạo, TP. Quy Nhơn, Bình Định|20102022"
-
-    var lastScannedPreview by remember { mutableStateOf<String?>(null) }
-
     val infiniteTransition = rememberInfiniteTransition(label = "scan_laser")
     val translateY by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -378,93 +371,10 @@ private fun ScannerOverlayUI(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp, start = 32.dp, end = 32.dp)
+                    .padding(bottom = 32.dp, start = 32.dp, end = 32.dp)
                     .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             )
-        }
-
-        // Bottom Controls & Emulator Sample Fallback
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                lastScannedPreview?.let { previewText ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                        )
-                    ) {
-                        Text(
-                            text = previewText,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(12.dp)
-                        )
-                    }
-                }
-
-                Text(
-                    text = "Không có camera hoặc đang chạy máy ảo Emulator?",
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            val parsed = parseCccdQrPayload(sampleQr1)
-                            if (parsed != null) {
-                                lastScannedPreview = "Mẫu 1: ${parsed.fullName} - ${parsed.cccdNumber}"
-                                onCccdScanned(parsed)
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.QrCodeScanner,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("CCCD Mẫu 1 (Nam)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            val parsed = parseCccdQrPayload(sampleQr2)
-                            if (parsed != null) {
-                                lastScannedPreview = "Mẫu 2: ${parsed.fullName} - ${parsed.cccdNumber}"
-                                onCccdScanned(parsed)
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("CCCD Mẫu 2 (Nữ)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
         }
     }
 }

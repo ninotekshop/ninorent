@@ -87,10 +87,12 @@ fun CreateRentalScreen(
     // Customer auto-fill on phone or CCCD match
     var lastMatchedCustId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(state.lesseePhone, state.lesseeIdNumber) {
-        if (state.lesseePhone.isNotBlank() || state.lesseeIdNumber.isNotBlank()) {
+        val cleanP = state.lesseePhone.replace(" ", "").trim()
+        val cleanId = state.lesseeIdNumber.replace(" ", "").trim()
+        if (cleanP.isNotBlank() || cleanId.isNotBlank()) {
             val matched = customersList.find { cust ->
-                (cust.phone.isNotBlank() && cust.phone.replace(" ", "") == state.lesseePhone.replace(" ", "")) ||
-                (cust.idNumber.isNotBlank() && cust.idNumber.replace(" ", "") == state.lesseeIdNumber.replace(" ", ""))
+                (cust.phone.isNotBlank() && cust.phone.replace(" ", "").trim() == cleanP) ||
+                (cust.idNumber.isNotBlank() && cust.idNumber.replace(" ", "").trim() == cleanId)
             }
             if (matched != null && matched.id != lastMatchedCustId) {
                 lastMatchedCustId = matched.id
@@ -105,7 +107,7 @@ fun CreateRentalScreen(
                 if (!matched.idCardBackPhotoUri.isNullOrEmpty()) {
                     state.idCardBackPhotoUri = matched.idCardBackPhotoUri
                 }
-                Toast.makeText(context, "Đây là Khách hàng cũ, đã có sẵn thông tin cá nhân", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Đã tự động điền thông tin Khách hàng cũ: ${matched.name}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -324,16 +326,14 @@ fun CreateRentalScreen(
 
                         Text("1. Thông tin Khách thuê", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
-                        OutlinedTextField(
-                            value = state.lesseeName,
-                            onValueChange = { state.lesseeName = it },
-                            label = { Text("Họ và tên khách hàng *") },
-                            leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) },
-                            placeholder = { Text("Nhập họ và tên khách thuê") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true
-                        )
+                        val cleanPhone = state.lesseePhone.replace(" ", "").trim()
+                        val matchedCustomer = remember(cleanPhone, customersList) {
+                            if (cleanPhone.length >= 6) {
+                                customersList.find { cust ->
+                                    cust.phone.replace(" ", "").trim() == cleanPhone
+                                }
+                            } else null
+                        }
 
                         OutlinedTextField(
                             value = state.lesseePhone,
@@ -345,6 +345,38 @@ fun CreateRentalScreen(
                             shape = RoundedCornerShape(12.dp),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                        )
+
+                        if (cleanPhone.isNotBlank()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (matchedCustomer != null) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                                ) {
+                                    Text(
+                                        text = if (matchedCustomer != null) "✓ Khách hàng cũ: ${matchedCustomer.name} (Đã có trong hệ thống)" else "➕ Khách hàng mới",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (matchedCustomer != null) Color(0xFF2E7D32) else PrimaryOrange
+                                    )
+                                }
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = state.lesseeName,
+                            onValueChange = { state.lesseeName = it },
+                            label = { Text("Họ và tên khách hàng *") },
+                            leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) },
+                            placeholder = { Text("Nhập họ và tên khách thuê") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
                         )
 
                         OutlinedTextField(
