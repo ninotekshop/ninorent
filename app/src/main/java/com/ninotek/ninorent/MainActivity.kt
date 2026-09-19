@@ -434,6 +434,13 @@ fun NinoRentApp() {
                             externalSelectedSubScreen = orderSubScreen,
                             onExternalSubScreenChange = { orderSubScreen = it },
                             isAdmin = isOwner,
+                            onClearDemoData = {
+                                devicesList = emptyList()
+                                ordersList = emptyList()
+                                customersList = emptyList()
+                                notificationsList = emptyList()
+                                prefs.edit().putBoolean("hasClearedDemoData", true).apply()
+                            },
                             onCreateOrder = handleCreateOrder,
                             onUpdateOrder = { updatedOrder ->
                                 val oldOrder = ordersList.find { it.id == updatedOrder.id }

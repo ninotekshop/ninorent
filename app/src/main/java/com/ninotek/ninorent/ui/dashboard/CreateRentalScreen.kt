@@ -1,5 +1,6 @@
 package com.ninotek.ninorent.ui.dashboard
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -76,6 +77,7 @@ fun CreateRentalScreen(
     bankAccountInfo: BankAccountInfo = loadBankAccountInfoFromPrefs(LocalContext.current),
     devicesList: List<Equipment> = defaultDevicesList,
     customersList: List<Customer> = emptyList(),
+    onClearDemoData: () -> Unit = {},
     onCreateOrder: (RentalOrder) -> Unit = {},
     onPrintContract: (RentalOrder) -> Unit = {}
 ) {
@@ -89,6 +91,7 @@ fun CreateRentalScreen(
 
     var isConfigured by remember { mutableStateOf(isStoreConfigured(context)) }
     var showSetupDialog by remember { mutableStateOf(!isConfigured) }
+    var showClearDemoPrompt by remember { mutableStateOf(false) }
 
     if (!isConfigured && showSetupDialog) {
         if (isOwner) {
@@ -199,9 +202,15 @@ fun CreateRentalScreen(
                                     SupabaseManager.upsertStoreSettings(newLessor, newBank)
                                 }
 
+                                val prefs = context.getSharedPreferences("ninorent_prefs", Context.MODE_PRIVATE)
+                                val hasCleared = prefs.getBoolean("hasClearedDemoData", false)
                                 isConfigured = true
                                 showSetupDialog = false
-                                Toast.makeText(context, "Đã lưu cấu hình cửa hàng thành công!", Toast.LENGTH_SHORT).show()
+                                if (!hasCleared) {
+                                    showClearDemoPrompt = true
+                                } else {
+                                    Toast.makeText(context, "Đã lưu cấu hình cửa hàng thành công!", Toast.LENGTH_SHORT).show()
+                                }
                             } else {
                                 Toast.makeText(context, "Vui lòng điền đầy đủ các thông tin bắt buộc (*)", Toast.LENGTH_SHORT).show()
                             }
@@ -239,6 +248,39 @@ fun CreateRentalScreen(
                 }
             )
         }
+    }
+
+    if (showClearDemoPrompt) {
+        AlertDialog(
+            onDismissRequest = { showClearDemoPrompt = false },
+            icon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null, tint = Color.Red, modifier = Modifier.size(36.dp)) },
+            title = { Text("Xóa dữ liệu Demo (Dữ liệu mẫu)", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Cấu hình cửa hàng đã hoàn tất!\n\nBạn có muốn dọn dẹp toàn bộ dữ liệu mẫu (thiết bị mẫu, đơn thuê mẫu, khách hàng mẫu) để bắt đầu nhập dữ liệu chính thức cho cửa hàng ngay bây giờ không?",
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val prefs = context.getSharedPreferences("ninorent_prefs", Context.MODE_PRIVATE)
+                        prefs.edit().putBoolean("hasClearedDemoData", true).apply()
+                        onClearDemoData()
+                        showClearDemoPrompt = false
+                        Toast.makeText(context, "Đã dọn dẹp dữ liệu mẫu, cửa hàng sẵn sàng sử dụng chính thức!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Xóa dữ liệu Demo ngay", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDemoPrompt = false }) {
+                    Text("Để sau (Giữ dữ liệu mẫu)")
+                }
+            }
+        )
     }
 
     BackHandler {

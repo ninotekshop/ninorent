@@ -81,6 +81,7 @@ fun RentalOrdersScreen(
     externalSelectedSubScreen: String? = null,
     onExternalSubScreenChange: ((String?) -> Unit)? = null,
     isAdmin: Boolean = false,
+    onClearDemoData: () -> Unit = {},
     onCreateOrder: (RentalOrder) -> Unit = {},
     onUpdateOrder: (RentalOrder) -> Unit = {},
     onDeleteOrder: (RentalOrder) -> Unit = {},
@@ -159,6 +160,7 @@ fun RentalOrdersScreen(
                 lessorInfo = lessorInfo,
                 devicesList = devicesList,
                 customersList = customersList,
+                onClearDemoData = onClearDemoData,
                 onCreateOrder = { newOrder ->
                     onCreateOrder(newOrder)
                     updateSubScreen(null)
