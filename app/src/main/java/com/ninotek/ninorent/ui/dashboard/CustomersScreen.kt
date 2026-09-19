@@ -1,7 +1,13 @@
 package com.ninotek.ninorent.ui.dashboard
 
+import android.graphics.Bitmap
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -17,10 +23,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import android.widget.Toast
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.ninotek.ninorent.model.Customer
 import com.ninotek.ninorent.ui.theme.NinoRentTheme
 import com.ninotek.ninorent.ui.theme.PrimaryOrange
+import coil.compose.AsyncImage
 import java.util.UUID
 
 val defaultCustomersList = listOf(
@@ -278,6 +286,27 @@ fun CustomersScreen(
         var idNumber by remember { mutableStateOf("") }
         var showQrScannerDialog by remember { mutableStateOf(false) }
 
+        var frontPhotoUri by remember { mutableStateOf<String?>(null) }
+        var frontPhotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
+        var backPhotoUri by remember { mutableStateOf<String?>(null) }
+        var backPhotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+        val frontPhotoLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri -> if (uri != null) frontPhotoUri = uri.toString() }
+
+        val frontCameraLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicturePreview()
+        ) { bitmap -> if (bitmap != null) frontPhotoBitmap = bitmap }
+
+        val backPhotoLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri -> if (uri != null) backPhotoUri = uri.toString() }
+
+        val backCameraLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicturePreview()
+        ) { bitmap -> if (bitmap != null) backPhotoBitmap = bitmap }
+
         val context = LocalContext.current
         val hapticFeedback = LocalHapticFeedback.current
 
@@ -378,6 +407,43 @@ fun CustomersScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    if (type == "Cá nhân") {
+                        Text("Ảnh chụp giấy tờ tùy thân:", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            IdCardPhotoPickerBox(
+                                title = "Mặt trước",
+                                photoUri = frontPhotoUri,
+                                photoBitmap = frontPhotoBitmap,
+                                onPickPhotoFromGallery = { frontPhotoLauncher.launch("image/*") },
+                                onTakePhotoFromCamera = { frontCameraLauncher.launch(null) },
+                                onRetakePhoto = { frontCameraLauncher.launch(null) },
+                                onClearPhoto = {
+                                    frontPhotoUri = null
+                                    frontPhotoBitmap = null
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            IdCardPhotoPickerBox(
+                                title = "Mặt sau",
+                                photoUri = backPhotoUri,
+                                photoBitmap = backPhotoBitmap,
+                                onPickPhotoFromGallery = { backPhotoLauncher.launch("image/*") },
+                                onTakePhotoFromCamera = { backCameraLauncher.launch(null) },
+                                onRetakePhoto = { backCameraLauncher.launch(null) },
+                                onClearPhoto = {
+                                    backPhotoUri = null
+                                    backPhotoBitmap = null
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -391,7 +457,9 @@ fun CustomersScreen(
                                 address = address.ifBlank { "TP. Quy Nhơn, Bình Định" },
                                 type = type,
                                 email = email.ifBlank { "contact@example.com" },
-                                idNumber = idNumber.ifBlank { "012345678901" }
+                                idNumber = idNumber.ifBlank { "012345678901" },
+                                idCardFrontPhotoUri = frontPhotoUri,
+                                idCardBackPhotoUri = backPhotoUri
                             )
                             onAddCustomer(newCust)
                             showAddDialog = false
@@ -440,6 +508,46 @@ fun CustomersScreen(
                     }
                     Text("Địa chỉ: ${cust.address}")
                     Text("Email: ${cust.email}")
+
+                    if (!cust.idCardFrontPhotoUri.isNullOrEmpty() || !cust.idCardBackPhotoUri.isNullOrEmpty()) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Text("Ảnh giấy tờ tùy thân:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (!cust.idCardFrontPhotoUri.isNullOrEmpty()) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    AsyncImage(
+                                        model = cust.idCardFrontPhotoUri,
+                                        contentDescription = "Mặt trước",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(70.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("Mặt trước", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+                            if (!cust.idCardBackPhotoUri.isNullOrEmpty()) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    AsyncImage(
+                                        model = cust.idCardBackPhotoUri,
+                                        contentDescription = "Mặt sau",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(70.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("Mặt sau", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
