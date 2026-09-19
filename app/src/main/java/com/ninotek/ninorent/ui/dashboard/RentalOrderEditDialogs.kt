@@ -59,7 +59,7 @@ fun EditRentalOrderDialog(
                 OutlinedTextField(
                     value = dateRange,
                     onValueChange = { dateRange = it },
-                    label = { Text("Ngày thuê (Ví dụ: 10/09 - 12/09/2026)") },
+                    label = { Text("Thời gian (VD: 19:00 20/09 - 19:00 21/09)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
