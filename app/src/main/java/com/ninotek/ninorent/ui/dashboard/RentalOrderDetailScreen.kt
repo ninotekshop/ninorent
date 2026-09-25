@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +41,7 @@ fun RentalOrderDetailScreen(
     isAdmin: Boolean = false,
     onPrintContract: () -> Unit = {},
     onExtendOrder: (RentalOrder) -> Unit = {},
+    onCreateExtensionOrder: (RentalOrder, Double) -> Unit = { _, _ -> },
     onEditOrder: (RentalOrder) -> Unit = {},
     onDeleteOrder: (RentalOrder) -> Unit = {},
     onPayOrder: (String) -> Unit = {},
@@ -48,11 +51,13 @@ fun RentalOrderDetailScreen(
     var showPayDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showOverdueDialog by remember { mutableStateOf(false) }
 
     BackHandler {
         when {
             showEditDialog -> showEditDialog = false
             showExtendDialog -> showExtendDialog = false
+            showOverdueDialog -> showOverdueDialog = false
             showPayDialog -> showPayDialog = false
             else -> onBack()
         }
@@ -104,30 +109,58 @@ fun RentalOrderDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OutlinedButton(
-                            onClick = { showExtendDialog = true },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(50.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryOrange)
-                        ) {
-                            Icon(Icons.Rounded.Update, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Gia hạn", fontWeight = FontWeight.Bold)
-                        }
+                        if (order.status == "Quá hạn") {
+                            OutlinedButton(
+                                onClick = { showPayDialog = true },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32))
+                            ) {
+                                Icon(Icons.Rounded.TaskAlt, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Ngoài ý muốn (Miễn phí)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
 
-                        Button(
-                            onClick = { showPayDialog = true },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(50.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
-                        ) {
-                            Icon(Icons.Rounded.Payment, contentDescription = null, tint = Color.White)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Thanh toán", fontWeight = FontWeight.Bold, color = Color.White)
+                            Button(
+                                onClick = { showOverdueDialog = true },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
+                            ) {
+                                Icon(Icons.Rounded.Warning, contentDescription = null, tint = Color.White)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Phát sinh thêm (Tính phí)", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { showExtendDialog = true },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryOrange)
+                            ) {
+                                Icon(Icons.Rounded.Update, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Gia hạn", fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = { showPayDialog = true },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
+                            ) {
+                                Icon(Icons.Rounded.Payment, contentDescription = null, tint = Color.White)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Thanh toán", fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
                     }
                 }
@@ -520,6 +553,71 @@ fun RentalOrderDetailScreen(
                 TextButton(onClick = { showPayDialog = false }) {
                     Text("Hủy")
                 }
+            }
+        )
+    }
+
+    if (showOverdueDialog) {
+        var extraDays by remember { mutableDoubleStateOf(0.5) }
+
+        AlertDialog(
+            onDismissRequest = { showOverdueDialog = false },
+            title = { Text("Tính phí phát sinh", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Thiết bị: ${order.equipmentName}", fontSize = 13.sp)
+                    Text("Chọn số ngày quá hạn (phát sinh):", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = if (extraDays % 1.0 == 0.0) "${extraDays.toInt()}" else "$extraDays",
+                            onValueChange = {
+                                val newVal = it.replace(",", ".").toDoubleOrNull()
+                                if (newVal != null && newVal >= 0.0) {
+                                    extraDays = newVal
+                                } else if (it.isBlank()) {
+                                    extraDays = 0.0
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            IconButton(
+                                onClick = { if (extraDays >= 0.5) extraDays -= 0.5 },
+                                modifier = Modifier.background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp)).size(40.dp)
+                            ) {
+                                Icon(Icons.Rounded.Remove, contentDescription = "Giảm")
+                            }
+                            IconButton(
+                                onClick = { extraDays += 0.5 },
+                                modifier = Modifier.background(PrimaryOrange.copy(alpha = 0.15f), RoundedCornerShape(8.dp)).size(40.dp)
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = "Tăng", tint = PrimaryOrange)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onCreateExtensionOrder(order, extraDays)
+                        showOverdueDialog = false
+                        onBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
+                ) {
+                    Text("Tạo đơn phát sinh")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOverdueDialog = false }) { Text("Hủy") }
             }
         )
     }

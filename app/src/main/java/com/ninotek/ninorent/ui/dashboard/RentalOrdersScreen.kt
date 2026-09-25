@@ -206,6 +206,39 @@ fun RentalOrdersScreen(
                 onExtendOrder = { updatedOrder ->
                     onUpdateOrder(updatedOrder)
                 },
+                onCreateExtensionOrder = { baseOrder, extraDays ->
+                    rentalState.reset(devicesList)
+                    // prefill customer
+                    rentalState.lesseeName = baseOrder.lesseeName.ifBlank { baseOrder.customerName }
+                    rentalState.lesseePhone = baseOrder.lesseePhone
+                    rentalState.lesseeAddress = baseOrder.lesseeAddress
+                    rentalState.lesseeIdNumber = baseOrder.lesseeIdNumber
+                    rentalState.lesseeIdIssueDate = baseOrder.lesseeIdIssueDate
+                    rentalState.idCardFrontPhotoUri = baseOrder.idCardFrontPhotoUri
+                    rentalState.idCardBackPhotoUri = baseOrder.idCardBackPhotoUri
+
+                    // prefill cart items
+                    rentalState.cartItems.clear()
+                    rentalState.cartItems.addAll(baseOrder.equipmentItems)
+
+                    // parse base order end date for start date of new order
+                    val parts = baseOrder.dateRange.split("-").map { it.trim() }
+                    val endPart = parts.getOrNull(1) ?: ""
+                    val cleanEnd = endPart.substringBefore("(").trim()
+                    val endTokens = cleanEnd.split(" ")
+                    if (endTokens.size >= 2) {
+                        rentalState.startTime = endTokens[0]
+                        rentalState.startDate = endTokens[1]
+                    }
+
+                    // set extra duration
+                    rentalState.rentalDays = extraDays
+                    rentalState.updateEndDateTime()
+
+                    // jump to step 3
+                    rentalState.currentStep = 3
+                    updateSubScreen("create")
+                },
                 onEditOrder = { updatedOrder ->
                     onUpdateOrder(updatedOrder)
                 },
