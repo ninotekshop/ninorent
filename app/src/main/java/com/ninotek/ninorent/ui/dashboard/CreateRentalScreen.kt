@@ -65,6 +65,8 @@ import com.ninotek.ninorent.utils.getOrderEquipmentItems
 import com.ninotek.ninorent.utils.parseCurrencyToLong
 import com.ninotek.ninorent.utils.printContract
 import com.ninotek.ninorent.utils.shareContractPdf
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -359,19 +361,75 @@ fun CreateRentalScreen(
     // Camera & Image Launchers
     val frontPhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri -> if (uri != null) state.idCardFrontPhotoUri = uri.toString() }
+    ) { uri -> 
+        if (uri != null) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val file = File(context.filesDir, "front_gal_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(file).use { output ->
+                    inputStream?.copyTo(output)
+                }
+                inputStream?.close()
+                state.idCardFrontPhotoUri = file.toURI().toString()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                state.idCardFrontPhotoUri = uri.toString()
+            }
+        } 
+    }
 
     val frontCameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap -> if (bitmap != null) state.idCardFrontPhotoBitmap = bitmap }
+    ) { bitmap -> 
+        if (bitmap != null) {
+            state.idCardFrontPhotoBitmap = bitmap
+            try {
+                val file = File(context.filesDir, "front_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                }
+                state.idCardFrontPhotoUri = file.toURI().toString()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        } 
+    }
 
     val backPhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri -> if (uri != null) state.idCardBackPhotoUri = uri.toString() }
+    ) { uri -> 
+        if (uri != null) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val file = File(context.filesDir, "back_gal_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(file).use { output ->
+                    inputStream?.copyTo(output)
+                }
+                inputStream?.close()
+                state.idCardBackPhotoUri = file.toURI().toString()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                state.idCardBackPhotoUri = uri.toString()
+            }
+        } 
+    }
 
     val backCameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap -> if (bitmap != null) state.idCardBackPhotoBitmap = bitmap }
+    ) { bitmap -> 
+        if (bitmap != null) {
+            state.idCardBackPhotoBitmap = bitmap
+            try {
+                val file = File(context.filesDir, "back_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                }
+                state.idCardBackPhotoUri = file.toURI().toString()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        } 
+    }
 
     val equipmentNameCombined = state.cartItems.joinToString(" + ") { it.equipmentName }.ifEmpty { "Sony Alpha A7C" }
     val serialNumberCombined = state.cartItems.joinToString(", ") { it.serialNumber }.ifEmpty { "SN-2026-NINO88" }
