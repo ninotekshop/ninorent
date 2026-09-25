@@ -193,7 +193,7 @@ fun Equipment.toDto() = EquipmentDto(
     name = name,
     category = category,
     category_subtitle = categorySubtitle,
-    daily_price = pricePerDay,
+    daily_price = parseCurrencyToLong(pricePerDay).toString(),
     status = status,
     serial_number = serialNumber,
     storeId = if (storeId.isNotBlank()) storeId else SupabaseManager.currentStoreId
@@ -314,7 +314,8 @@ fun RentalOrder.toDto(): RentalOrderDto {
         "{}"
     }
 
-    val totalAmt = netTotal.ifBlank { price }
+    val totalAmtStr = parseCurrencyToLong(netTotal.ifBlank { price }).toString()
+    val advPayStr = parseCurrencyToLong(advancePaymentAmount).toString()
     val custName = customerName.ifBlank { lesseeName }
     val custPhone = lesseePhone
 
@@ -326,8 +327,8 @@ fun RentalOrder.toDto(): RentalOrderDto {
         customer_name = custName,
         customer_phone = custPhone,
         equipment_summary = equipmentName,
-        total_amount = totalAmt,
-        advance_payment = advancePaymentAmount,
+        total_amount = totalAmtStr,
+        advance_payment = advPayStr,
         status = status,
         start_date = startDate,
         end_date = endDate,

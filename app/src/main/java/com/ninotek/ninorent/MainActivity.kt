@@ -385,18 +385,33 @@ fun NinoRentApp() {
 
                         val custName = newOrder.lesseeName.ifBlank { newOrder.customerName }
                         val custPhone = newOrder.lesseePhone
-                        if (custName.isNotBlank() && !customersList.any { it.phone == custPhone || it.name.equals(custName, ignoreCase = true) }) {
-                            val newCust = Customer(
-                                id = UUID.randomUUID().toString(),
-                                name = custName,
-                                phone = custPhone,
-                                address = newOrder.lesseeAddress,
-                                idNumber = newOrder.lesseeIdNumber,
-                                idIssueDate = newOrder.lesseeIdIssueDate,
-                                storeId = SupabaseManager.currentStoreId ?: ""
-                            )
-                            customersList = listOf(newCust) + customersList
-                            scope.launch(Dispatchers.IO) { SupabaseManager.insertCustomer(newCust) }
+                        if (custName.isNotBlank()) {
+                            val existingCust = customersList.find { it.phone == custPhone || it.name.equals(custName, ignoreCase = true) }
+                            if (existingCust == null) {
+                                val newCust = Customer(
+                                    id = UUID.randomUUID().toString(),
+                                    name = custName,
+                                    phone = custPhone,
+                                    address = newOrder.lesseeAddress,
+                                    idNumber = newOrder.lesseeIdNumber,
+                                    idIssueDate = newOrder.lesseeIdIssueDate,
+                                    idCardFrontPhotoUri = newOrder.idCardFrontPhotoUri,
+                                    idCardBackPhotoUri = newOrder.idCardBackPhotoUri,
+                                    storeId = SupabaseManager.currentStoreId ?: ""
+                                )
+                                customersList = listOf(newCust) + customersList
+                                scope.launch(Dispatchers.IO) { SupabaseManager.insertCustomer(newCust) }
+                            } else {
+                                // Update existing customer if photos are added
+                                if (existingCust.idCardFrontPhotoUri != newOrder.idCardFrontPhotoUri || existingCust.idCardBackPhotoUri != newOrder.idCardBackPhotoUri) {
+                                    val updatedCust = existingCust.copy(
+                                        idCardFrontPhotoUri = newOrder.idCardFrontPhotoUri ?: existingCust.idCardFrontPhotoUri,
+                                        idCardBackPhotoUri = newOrder.idCardBackPhotoUri ?: existingCust.idCardBackPhotoUri
+                                    )
+                                    customersList = customersList.map { if (it.id == updatedCust.id) updatedCust else it }
+                                    scope.launch(Dispatchers.IO) { SupabaseManager.insertCustomer(updatedCust) }
+                                }
+                            }
                         }
                     }
 
