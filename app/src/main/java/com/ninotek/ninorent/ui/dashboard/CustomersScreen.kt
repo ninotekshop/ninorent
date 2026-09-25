@@ -39,6 +39,8 @@ import com.ninotek.ninorent.model.Customer
 import com.ninotek.ninorent.ui.theme.NinoRentTheme
 import com.ninotek.ninorent.ui.theme.PrimaryOrange
 import coil.compose.AsyncImage
+import java.io.File
+import java.io.FileOutputStream
 import java.util.UUID
 
 val defaultCustomersList = listOf(
@@ -291,24 +293,80 @@ fun CustomersScreen(
         var backPhotoUri by remember { mutableStateOf<String?>(null) }
         var backPhotoBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
+        val context = LocalContext.current
+        val hapticFeedback = LocalHapticFeedback.current
+
         val frontPhotoLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
-        ) { uri -> if (uri != null) frontPhotoUri = uri.toString() }
+        ) { uri -> 
+            if (uri != null) {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val file = File(context.filesDir, "cust_front_gal_${System.currentTimeMillis()}.jpg")
+                    FileOutputStream(file).use { output ->
+                        inputStream?.copyTo(output)
+                    }
+                    inputStream?.close()
+                    frontPhotoUri = file.toURI().toString()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    frontPhotoUri = uri.toString()
+                }
+            } 
+        }
 
         val frontCameraLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.TakePicturePreview()
-        ) { bitmap -> if (bitmap != null) frontPhotoBitmap = bitmap }
+        ) { bitmap -> 
+            if (bitmap != null) {
+                frontPhotoBitmap = bitmap
+                try {
+                    val file = File(context.filesDir, "cust_front_cam_${System.currentTimeMillis()}.jpg")
+                    FileOutputStream(file).use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    }
+                    frontPhotoUri = file.toURI().toString()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            } 
+        }
 
         val backPhotoLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
-        ) { uri -> if (uri != null) backPhotoUri = uri.toString() }
+        ) { uri -> 
+            if (uri != null) {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val file = java.io.File(context.filesDir, "cust_back_gal_${System.currentTimeMillis()}.jpg")
+                    FileOutputStream(file).use { output ->
+                        inputStream?.copyTo(output)
+                    }
+                    inputStream?.close()
+                    backPhotoUri = file.toURI().toString()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    backPhotoUri = uri.toString()
+                }
+            } 
+        }
 
         val backCameraLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.TakePicturePreview()
-        ) { bitmap -> if (bitmap != null) backPhotoBitmap = bitmap }
-
-        val context = LocalContext.current
-        val hapticFeedback = LocalHapticFeedback.current
+        ) { bitmap -> 
+            if (bitmap != null) {
+                backPhotoBitmap = bitmap
+                try {
+                    val file = java.io.File(context.filesDir, "cust_back_cam_${System.currentTimeMillis()}.jpg")
+                    FileOutputStream(file).use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    }
+                    backPhotoUri = file.toURI().toString()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            } 
+        }
 
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
