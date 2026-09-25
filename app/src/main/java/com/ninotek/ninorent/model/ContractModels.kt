@@ -15,6 +15,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.ninotek.ninorent.utils.parseCccdQrPayload
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 enum class PaperSize(val label: String) {
@@ -363,11 +367,34 @@ class CreateRentalOrderState(
 
     // Step 2: Shopping Cart & Equipment Selection
     val cartItems = mutableStateListOf<CartItem>()
-    var startDate by mutableStateOf("20/09/2026")
-    var startTime by mutableStateOf("19:00")
-    var endDate by mutableStateOf("21/09/2026")
-    var endTime by mutableStateOf("19:00")
-    var durationDays by mutableStateOf("1 ngày (24h)")
+    
+    private val sdfDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    private val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+    var startDate by mutableStateOf("")
+    var startTime by mutableStateOf("")
+    var endDate by mutableStateOf("")
+    var endTime by mutableStateOf("")
+    var rentalDays by mutableStateOf(1.0)
+
+    fun updateEndDateTime() {
+        if (startDate.isBlank() || startTime.isBlank()) return
+        try {
+            val sdfFull = SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault())
+            val date = sdfFull.parse("$startTime $startDate") ?: return
+            
+            val hoursToAdd = (rentalDays * 24).toLong()
+            val minutesToAdd = ((rentalDays * 24 - hoursToAdd) * 60).toLong()
+            
+            val calendar = Calendar.getInstance()
+            calendar.time = date
+            calendar.add(Calendar.HOUR_OF_DAY, hoursToAdd.toInt())
+            calendar.add(Calendar.MINUTE, minutesToAdd.toInt())
+            
+            endDate = sdfDate.format(calendar.time)
+            endTime = sdfTime.format(calendar.time)
+        } catch (_: Exception) {}
+    }
 
     // Discount: VNĐ vs %
     var discountTypeIsPercent by mutableStateOf(false) // false = VNĐ, true = %
@@ -391,6 +418,11 @@ class CreateRentalOrderState(
 
     init {
         // Cart starts empty per requirement 2
+        val now = Date()
+        startDate = sdfDate.format(now)
+        startTime = sdfTime.format(now)
+        contractDate = startDate
+        updateEndDateTime()
     }
 
     fun populateDefaultCart(devices: List<Equipment>) {
@@ -414,11 +446,12 @@ class CreateRentalOrderState(
 
         cartItems.clear()
 
-        startDate = "20/09/2026"
-        startTime = "19:00"
-        endDate = "21/09/2026"
-        endTime = "19:00"
-        durationDays = "1 ngày (24h)"
+        val now = Date()
+        startDate = sdfDate.format(now)
+        startTime = sdfTime.format(now)
+        rentalDays = 1.0
+        updateEndDateTime()
+        
         discountTypeIsPercent = false
         discountValueText = "0"
 
@@ -430,11 +463,9 @@ class CreateRentalOrderState(
         hasCollateralAsset = false
         collateralAssetDescription = "Xe máy Honda Vision BKS 77F1-123.45"
         hasCollateralCash = false
-        collateralAssetDescription = "Xe máy Honda Vision BKS 77F1-123.45"
-        hasCollateralCash = false
         collateralCashAmount = "5.000.000"
         contractLocation = "TP. Quy Nhơn, Bình Định"
-        contractDate = "10/09/2026"
+        contractDate = startDate
         selectedPaperSize = PaperSize.A4
     }
 }

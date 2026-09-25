@@ -323,8 +323,9 @@ fun CreateRentalScreen(
     val dailyTotal = state.cartItems.sumOf { item ->
         item.pricePerDay.filter { c -> c.isDigit() }.toLongOrNull() ?: 0L
     }
-    val daysCount = state.durationDays.filter { it.isDigit() }.toIntOrNull() ?: 1
-    val grossTotal = dailyTotal * daysCount
+    val daysCount = state.rentalDays
+    val formatDaysStr = if (daysCount % 1.0 == 0.0) "${daysCount.toInt()}" else "$daysCount"
+    val grossTotal = (dailyTotal * daysCount).toLong()
 
     val rawDiscount = if (!state.discountTypeIsPercent) {
         state.discountValueText.filter { it.isDigit() }.toLongOrNull() ?: 0L
@@ -376,15 +377,16 @@ fun CreateRentalScreen(
     val serialNumberCombined = state.cartItems.joinToString(", ") { it.serialNumber }.ifEmpty { "SN-2026-NINO88" }
 
     val currentCreatedOrder = remember(
-        state.generatedOrderId, equipmentNameCombined, serialNumberCombined, state.startDate, state.startTime, state.endDate, state.endTime, state.durationDays,
+        state.generatedOrderId, equipmentNameCombined, serialNumberCombined, state.startDate, state.startTime, state.endDate, state.endTime, state.rentalDays,
         netTotalFormatted, state.lesseeName, state.lesseePhone, state.lesseeAddress, state.lesseeIdNumber, state.lesseeIdIssueDate,
         state.advancePaymentAmount, state.collateralCccd, state.collateralGplx, state.hasCollateralAsset, state.collateralAssetDescription,
         state.hasCollateralCash, state.collateralCashAmount, state.contractLocation, state.contractDate, lessorInfo, bankAccountInfo, discountFormatted, grossTotalFormatted, state.cartItems.toList()
     ) {
+        val displayDays = if (state.rentalDays % 1.0 == 0.0) "${state.rentalDays.toInt()}" else "${state.rentalDays}"
         RentalOrder(
             id = state.generatedOrderId,
             equipmentName = equipmentNameCombined,
-            dateRange = "${state.startTime} ${state.startDate} - ${state.endTime} ${state.endDate} (${state.durationDays})",
+            dateRange = "${state.startTime} ${state.startDate} - ${state.endTime} ${state.endDate} ($displayDays ngày)",
             price = grossTotalFormatted,
             status = "Đang thuê",
             customerName = state.lesseeName.ifBlank { "Khách Thuê" },
@@ -886,7 +888,7 @@ fun CreateRentalScreen(
                             ) {
                                 Icon(Icons.Rounded.Schedule, contentDescription = null, tint = PrimaryOrange, modifier = Modifier.size(18.dp))
                                 Text(
-                                    text = "Tính theo chu kỳ 24h: Giờ nhận máy trùng giờ trả máy sau N ngày (Ví dụ: ${state.startTime} ${state.startDate} ➔ ${state.endTime} ${state.endDate} là ${state.durationDays}).",
+                                    text = "Tính theo chu kỳ 24h: Giờ nhận máy trùng giờ trả máy sau N ngày.",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Medium
@@ -900,7 +902,10 @@ fun CreateRentalScreen(
                         ) {
                             OutlinedTextField(
                                 value = state.startDate,
-                                onValueChange = { state.startDate = it },
+                                onValueChange = { 
+                                    state.startDate = it
+                                    state.updateEndDateTime()
+                                },
                                 label = { Text("Ngày bắt đầu") },
                                 leadingIcon = { Icon(Icons.Rounded.CalendarToday, contentDescription = null) },
                                 modifier = Modifier.weight(1f),
@@ -911,7 +916,7 @@ fun CreateRentalScreen(
                                 value = state.startTime,
                                 onValueChange = {
                                     state.startTime = it
-                                    state.endTime = it
+                                    state.updateEndDateTime()
                                 },
                                 label = { Text("Giờ nhận máy") },
                                 leadingIcon = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
@@ -920,6 +925,56 @@ fun CreateRentalScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 singleLine = true
                             )
+                        }
+
+                        // Input for duration days with buttons to increment/decrement by 0.5
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = if (state.rentalDays % 1.0 == 0.0) "${state.rentalDays.toInt()}" else "${state.rentalDays}",
+                                onValueChange = {
+                                    val newVal = it.replace(",", ".").toDoubleOrNull()
+                                    if (newVal != null && newVal >= 0.0) {
+                                        state.rentalDays = newVal
+                                        state.updateEndDateTime()
+                                    } else if (it.isBlank()) {
+                                        state.rentalDays = 0.0
+                                        state.updateEndDateTime()
+                                    }
+                                },
+                                label = { Text("Số ngày thuê (24h/ngày)") },
+                                leadingIcon = { Icon(Icons.Rounded.Timelapse, contentDescription = null) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                            
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                IconButton(
+                                    onClick = {
+                                        if (state.rentalDays >= 0.5) {
+                                            state.rentalDays -= 0.5
+                                            state.updateEndDateTime()
+                                        }
+                                    },
+                                    modifier = Modifier.background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp)).size(40.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Remove, contentDescription = "Giảm")
+                                }
+                                IconButton(
+                                    onClick = {
+                                        state.rentalDays += 0.5
+                                        state.updateEndDateTime()
+                                    },
+                                    modifier = Modifier.background(PrimaryOrange.copy(alpha = 0.15f), RoundedCornerShape(8.dp)).size(40.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Add, contentDescription = "Tăng", tint = PrimaryOrange)
+                                }
+                            }
                         }
 
                         Row(
@@ -946,16 +1001,6 @@ fun CreateRentalScreen(
                                 singleLine = true
                             )
                         }
-
-                        OutlinedTextField(
-                            value = state.durationDays,
-                            onValueChange = { state.durationDays = it },
-                            label = { Text("Số ngày thuê (24h/ngày)") },
-                            leadingIcon = { Icon(Icons.Rounded.Timelapse, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true
-                        )
 
                         // Discount Options (VNĐ vs %)
                         Row(
