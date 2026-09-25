@@ -10,10 +10,10 @@ workflows:
       - name: Set up local.properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-      - name: Build Android Release & Debug APKs
+      - name: Build Android Release APK
         script: |
           chmod +x gradlew
-          ./gradlew assembleRelease assembleDebug
+          ./gradlew assembleRelease
       - name: Rename Release APK
         script: |
           VERSION_NAME=$(grep 'versionName = ' app/build.gradle.kts | sed 's/.*versionName = "\(.*\)".*/\1/' | head -n 1)
@@ -25,7 +25,6 @@ workflows:
           fi
     artifacts:
       - app/build/outputs/apk/release/*.apk
-      - app/build/outputs/apk/debug/*.apk
     publishing:
       email:
         recipients:
