@@ -3,6 +3,7 @@ package com.ninotek.ninorent.ui.dashboard
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,11 +16,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
 import com.ninotek.ninorent.model.CreateRentalOrderState
 import com.ninotek.ninorent.model.Customer
 import com.ninotek.ninorent.model.Equipment
@@ -28,6 +34,7 @@ import com.ninotek.ninorent.model.RentalOrder
 import com.ninotek.ninorent.model.defaultLessorInfo
 import com.ninotek.ninorent.ui.theme.*
 import com.ninotek.ninorent.utils.formatCurrencyAmount
+import com.ninotek.ninorent.utils.parseCurrencyToLong
 
 val defaultOrdersList = listOf(
     RentalOrder(
@@ -100,6 +107,7 @@ fun RentalOrdersScreen(
     var selectedOrderForPrint by remember { mutableStateOf<RentalOrder?>(null) }
     var orderToDelete by remember { mutableStateOf<RentalOrder?>(null) }
     var selectedTab by remember { mutableIntStateOf(0) }
+    var fullScreenImageUri by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialFilter) {
         if (initialFilter != null) {
@@ -388,46 +396,83 @@ fun RentalOrdersScreen(
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.Top
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.CalendarToday,
-                                                contentDescription = null,
-                                                tint = Color.Gray,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Text(
-                                                text = order.dateRange,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = Color.Gray
-                                            )
+                                            val parts = order.dateRange.split("-")
+                                            val startStr = parts.getOrNull(0)?.trim() ?: ""
+                                            val remaining = parts.getOrNull(1)?.trim() ?: ""
+                                            val endStr = remaining.substringBefore("(").trim()
+                                            val durStr = remaining.substringAfter("(").substringBeforeLast(")").trim()
+
+                                            val netTotalVal = parseCurrencyToLong(order.netTotal.ifBlank { order.price })
+                                            val advancePaymentVal = parseCurrencyToLong(order.advancePaymentAmount)
+                                            val remainingToPay = (netTotalVal - advancePaymentVal).coerceAtLeast(0L)
+
+                                            Text("Ngày thuê: $startStr", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            Text("Ngày trả: $endStr", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            Text("Số ngày thuê: $durStr", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            Text("Tiền thuê đã thanh toán: ${formatCurrencyAmount(advancePaymentVal)}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                            
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Text("Khách phải trả:", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                                Text(
+                                                    text = formatCurrencyAmount(remainingToPay),
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = PrimaryOrange
+                                                )
+                                            }
                                         }
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Text(
-                                                text = formatCurrencyAmount(order.netTotal.ifBlank { order.price }),
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                fontWeight = FontWeight.Bold,
-                                                color = PrimaryOrange
-                                            )
+
+                                        if (!order.idCardFrontPhotoUri.isNullOrBlank()) {
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                AsyncImage(
+                                                    model = order.idCardFrontPhotoUri,
+                                                    contentDescription = "CCCD",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .size(70.dp)
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                                                        .clickable { fullScreenImageUri = order.idCardFrontPhotoUri }
+                                                )
+                                                IconButton(
+                                                    onClick = {
+                                                        selectedOrderForPrint = order
+                                                        updateSubScreen("print")
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Rounded.Print,
+                                                        contentDescription = "In hợp đồng",
+                                                        tint = PrimaryOrange,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
+                                        } else {
                                             IconButton(
                                                 onClick = {
                                                     selectedOrderForPrint = order
                                                     updateSubScreen("print")
                                                 },
-                                                modifier = Modifier.size(28.dp)
+                                                modifier = Modifier.size(32.dp)
                                             ) {
                                                 Icon(
                                                     Icons.Rounded.Print,
                                                     contentDescription = "In hợp đồng",
                                                     tint = PrimaryOrange,
-                                                    modifier = Modifier.size(18.dp)
+                                                    modifier = Modifier.size(20.dp)
                                                 )
                                             }
                                         }
@@ -460,6 +505,28 @@ fun RentalOrdersScreen(
                         }
                     }
                 )
+            }
+            
+            if (fullScreenImageUri != null) {
+                Dialog(
+                    onDismissRequest = { fullScreenImageUri = null },
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black)
+                            .clickable { fullScreenImageUri = null },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = fullScreenImageUri,
+                            contentDescription = "Ảnh giấy tờ lớn",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
         }
     }
