@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.interop.UIKitView
 import com.ninotek.ninorent.utils.CccdData
 import com.ninotek.ninorent.utils.parseCccdQrPayload
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -85,9 +86,9 @@ actual fun logError(tag: String, message: String, error: Throwable?) {
     println("E/$tag: $message ${error?.message ?: ""}")
 }
 
-actual val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+actual val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 
-actual fun <T> runBlockingIO(block: suspend CoroutineScope.() -> T): T = runBlocking(Dispatchers.IO, block)
+actual fun <T> runBlockingIO(block: suspend CoroutineScope.() -> T): T = runBlocking(Dispatchers.Default, block)
 
 @Composable
 actual fun BackHandler(enabled: Boolean, onBack: () -> Unit) {
@@ -182,7 +183,7 @@ actual fun rememberCameraPermissionState(): CameraPermissionState {
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalForeignApi::class)
 @Composable
 actual fun CccdCameraViewfinder(onCccdScanned: (CccdData) -> Unit, modifier: Modifier) {
     val callback = rememberUpdatedState(onCccdScanned)
