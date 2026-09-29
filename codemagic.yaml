@@ -2,7 +2,7 @@ workflows:
   android-workflow:
     name: Android APK Workflow (For Testing)
     max_build_duration: 120
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m2
     environment:
       vars:
         PACKAGE_NAME: "com.ninotek.ninorent"
@@ -33,7 +33,7 @@ workflows:
   android-play-store-workflow:
     name: Android Google Play Publishing (AAB)
     max_build_duration: 120
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m2
     environment:
       # BƯỚC 1: Lên Codemagic UI -> App settings -> Android code signing để thêm file Keystore.
       # BƯỚC 2: Uncomment 2 dòng bên dưới và thay 'ninorent_keystore_reference' bằng tên file bạn vừa đặt.
