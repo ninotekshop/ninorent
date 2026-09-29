@@ -14,7 +14,9 @@ android {
         applicationId = "com.ninotek.ninorent"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
+        // Codemagic tăng BUILD_NUMBER sau mỗi lần build nên versionCode luôn tăng dần (Google Play yêu cầu).
+        // Build cục bộ không có biến này thì dùng 1.
+        versionCode = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
