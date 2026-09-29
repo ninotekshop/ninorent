@@ -62,3 +62,87 @@ workflows:
         credentials: $GPLAY_CREDENTIALS
         track: internal # Các lựa chọn: internal, alpha, beta, production
         submit_as_draft: true
+
+  # ---------------------------------------------------------------------------
+  # iOS (Compose Multiplatform). Dự án Xcode được sinh từ iosApp/project.yml bằng XcodeGen.
+  # ---------------------------------------------------------------------------
+
+  # Chạy workflow này TRƯỚC: build cho iOS Simulator, không cần ký, dùng để kiểm tra code Kotlin/Swift biên dịch được.
+  ios-simulator-check:
+    name: iOS Simulator Build (không ký, kiểm tra biên dịch)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: Generate Xcode project
+        script: |
+          brew install xcodegen
+          cd iosApp && xcodegen generate
+      - name: Build for iOS Simulator
+        script: |
+          chmod +x gradlew
+          xcodebuild build \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
+    publishing:
+      email:
+        recipients:
+          - admin@ninotek.vn
+
+  # Build .ipa ký cho App Store và đẩy lên TestFlight.
+  # Cần cấu hình trước trên Codemagic (Teams -> Integrations / Code signing identities):
+  #   1. Integration App Store Connect API key, đặt tên trùng với `app_store_connect` bên dưới.
+  #   2. Tạo app trong App Store Connect với bundle id com.ninotek.ninorent, lấy "Apple ID" của app điền vào APP_STORE_APPLE_ID.
+  ios-app-store-workflow:
+    name: iOS App Store / TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: ninorent_app_store_connect   # tên API key đã lưu trong Codemagic
+    environment:
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ninotek.ninorent
+      vars:
+        APP_STORE_APPLE_ID: "0000000000"   # thay bằng Apple ID của app trong App Store Connect
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: Generate Xcode project
+        script: |
+          brew install xcodegen
+          cd iosApp && xcodegen generate
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+      - name: Increment build number
+        script: |
+          cd iosApp
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")
+          agvtool new-version -all $(($LATEST + 1))
+      - name: Build ipa
+        script: |
+          chmod +x gradlew
+          xcode-project build-ipa \
+            --project "iosApp/iosApp.xcodeproj" \
+            --scheme "iosApp"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - admin@ninotek.vn
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

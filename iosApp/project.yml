@@ -1,0 +1,62 @@
+# Cấu hình dự án Xcode cho XcodeGen (https://github.com/yonaskolb/XcodeGen).
+# Sinh file .xcodeproj bằng:  brew install xcodegen && cd iosApp && xcodegen generate
+# Codemagic chạy lệnh này tự động (xem codemagic.yaml, workflow ios-workflow).
+name: iosApp
+
+options:
+  bundleIdPrefix: com.ninotek
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"        # giữ khớp với versionName của Android (app/build.gradle.kts)
+    CURRENT_PROJECT_VERSION: "1"    # tăng cho mỗi bản upload lên App Store Connect
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    info:
+      path: iosApp/Info.plist
+      properties:
+        CFBundleDisplayName: NinoRent
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CADisableMinimumFrameDurationOnPhone: true
+        ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: "NinoRent dùng máy ảnh để quét mã QR trên CCCD và chụp ảnh giấy tờ của khách thuê."
+        NSPhotoLibraryUsageDescription: "NinoRent cần truy cập thư viện ảnh để chọn ảnh giấy tờ và logo cửa hàng."
+        NSFaceIDUsageDescription: "NinoRent dùng Face ID để đăng nhập nhanh."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ninotek.ninorent
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-framework"
+          - "Shared"
+    preBuildScripts:
+      - name: Build Kotlin framework (Compose Multiplatform)
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode

@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "NinoRent"
 include(":app")
+include(":shared")
  

@@ -13,3 +13,14 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# iOS (XcodeGen sinh ra từ iosApp/project.yml)
+iosApp/iosApp.xcodeproj/
+iosApp/iosApp/Info.plist
+xcuserdata/
+*.xcworkspace/
+Pods/
+DerivedData/
+
+/shared/build
+*.log
