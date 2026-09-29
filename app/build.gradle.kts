@@ -20,9 +20,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Codemagic (android_signing) cung cấp các biến CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD,
+    // CM_KEY_ALIAS, CM_KEY_PASSWORD. Khi build cục bộ không có biến này thì dùng chữ ký debug.
+    val releaseKeystorePath: String? = System.getenv("CM_KEYSTORE_PATH")
+    val hasReleaseKeystore = !releaseKeystorePath.isNullOrBlank()
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CM_KEY_ALIAS")
+                keyPassword = System.getenv("CM_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

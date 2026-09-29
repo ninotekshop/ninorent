@@ -37,8 +37,8 @@ workflows:
     environment:
       # BƯỚC 1: Lên Codemagic UI -> App settings -> Android code signing để thêm file Keystore.
       # BƯỚC 2: Uncomment 2 dòng bên dưới và thay 'ninorent_keystore_reference' bằng tên file bạn vừa đặt.
-      # android_signing:
-      #   - ninorent_keystore_reference
+      android_signing:
+        - ninorent_keystore
       
       # BƯỚC 3: Lên Codemagic UI -> Environment variables để thêm biến môi trường GPLAY_CREDENTIALS.
       # Biến này chứa nội dung file JSON của Google Play Service Account để cho phép Codemagic tự động upload.
